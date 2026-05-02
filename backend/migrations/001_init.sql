@@ -1,0 +1,49 @@
+CREATE TABLE IF NOT EXISTS organizations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS organization_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organization_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    role VARCHAR(32) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code VARCHAR(64) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    bot_limit INTEGER NOT NULL DEFAULT 1,
+    message_limit INTEGER NOT NULL DEFAULT 1000,
+    integration_limit INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organization_id INTEGER NOT NULL,
+    plan_id INTEGER NOT NULL,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id),
+    FOREIGN KEY (plan_id) REFERENCES plans(id)
+);
+
+CREATE TABLE IF NOT EXISTS usage_counters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organization_id INTEGER NOT NULL,
+    bots_used INTEGER NOT NULL DEFAULT 0,
+    messages_used INTEGER NOT NULL DEFAULT 0,
+    integrations_used INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id)
+);

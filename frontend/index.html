@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal MVP</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>Portal</h2>
+      <button data-view="login">Вход</button>
+      <button data-view="profile">Профиль</button>
+      <button data-view="org">Организация</button>
+      <button data-view="users">Пользователи</button>
+      <button id="logoutBtn">Выход</button>
+    </aside>
+    <main class="content">
+      <h1 id="title">Личный кабинет</h1>
+      <section id="view"></section>
+    </main>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>

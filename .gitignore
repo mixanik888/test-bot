@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / frontend
+node_modules/
+dist/
+*.local
+
+# Env и секреты
+.env
+.env.*
+
+# Локальная БД SQLite
+*.db
+
+# IDE / ОС
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Логи
+*.log
+npm-debug.log*
+
+# Локальные артефакты (не публиковать)
+pass
+nginx-dump.txt
