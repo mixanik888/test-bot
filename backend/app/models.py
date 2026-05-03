@@ -12,6 +12,7 @@ class Organization(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     users = relationship("OrganizationUser", back_populates="organization")
+    bots = relationship("Bot", back_populates="organization")
 
 
 class User(Base):
@@ -66,3 +67,32 @@ class UsageCounter(Base):
     bots_used = Column(Integer, nullable=False, default=0)
     messages_used = Column(Integer, nullable=False, default=0)
     integrations_used = Column(Integer, nullable=False, default=0)
+
+
+class Bot(Base):
+    __tablename__ = "bots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    status = Column(String(32), nullable=False, default="draft")
+    webhook_secret = Column(String(64), unique=True, index=True, nullable=False)
+    telegram_bot_token = Column(String(255), nullable=True)
+    telegram_bot_username = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    organization = relationship("Organization", back_populates="bots")
+    messages = relationship("BotMessage", back_populates="bot", cascade="all, delete-orphan")
+
+
+class BotMessage(Base):
+    __tablename__ = "bot_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    bot_id = Column(Integer, ForeignKey("bots.id"), nullable=False)
+    direction = Column(String(8), nullable=False)
+    telegram_chat_id = Column(String(64), nullable=False)
+    text = Column(String(4096), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    bot = relationship("Bot", back_populates="messages")

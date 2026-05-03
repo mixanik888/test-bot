@@ -37,3 +37,14 @@ def require_admin(member: OrganizationUser = Depends(get_current_org_member)) ->
     if member.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
     return member
+
+
+def require_manager_or_admin(
+    member: OrganizationUser = Depends(get_current_org_member),
+) -> OrganizationUser:
+    if member.role not in ("admin", "manager"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manager or admin role required",
+        )
+    return member

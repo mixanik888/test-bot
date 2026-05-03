@@ -76,3 +76,41 @@ pre {
   padding: 10px;
   white-space: pre-wrap;
 }
+
+.hint {
+  font-size: 0.9rem;
+  color: #374151;
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+
+.bot-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+}
+
+.bot-list li {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.bot-list .row {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.bot-list .row input[type="password"] {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+.small {
+  font-size: 0.8rem;
+}

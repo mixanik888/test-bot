@@ -61,3 +61,29 @@ class LimitsResponse(BaseModel):
     messages_limit: int
     integrations_used: int
     integrations_limit: int
+
+
+class BotCreateRequest(BaseModel):
+    name: str
+
+
+class BotTelegramTokenRequest(BaseModel):
+    token: str
+
+
+class BotResponse(BaseModel):
+    id: int
+    organization_id: int
+    name: str
+    status: str
+    telegram_bot_username: str | None
+    webhook_url: str
+    has_telegram: bool
+
+
+class BotMessageResponse(BaseModel):
+    id: int
+    direction: str
+    telegram_chat_id: str
+    text: str | None
+    created_at: str | None

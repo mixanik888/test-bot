@@ -1,11 +1,23 @@
 import { useMemo, useState } from "react";
 import "./App.css";
 
-type View = "login" | "profile" | "org" | "users";
+type View = "login" | "profile" | "org" | "users" | "bots";
 type Role = "admin" | "manager" | "support_agent";
 
-type ApiError = { detail?: string };
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
+type ApiError = { detail?: string | unknown };
+// В dev Vite (5173) API на :8000; в продакшене nginx проксирует /api на тот же хост.
+const API_BASE = import.meta.env.DEV
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : window.location.origin;
+
+type BotItem = {
+  id: number;
+  name: string;
+  status: string;
+  telegram_bot_username: string | null;
+  webhook_url: string;
+  has_telegram: boolean;
+};
 
 function App() {
   const [view, setView] = useState<View>("login");
@@ -17,6 +29,9 @@ function App() {
   const [inviteName, setInviteName] = useState("Manager User 3");
   const [inviteRole, setInviteRole] = useState<Role>("manager");
   const [invitePassword, setInvitePassword] = useState("Temp123!");
+  const [bots, setBots] = useState<BotItem[]>([]);
+  const [newBotName, setNewBotName] = useState("Мой бот");
+  const [tgTokenByBot, setTgTokenByBot] = useState<Record<number, string>>({});
 
   const isAuth = useMemo(() => Boolean(token), [token]);
 
@@ -31,9 +46,19 @@ function App() {
     });
 
     const text = await res.text();
-    const data = text ? (JSON.parse(text) as T | ApiError) : ({} as T);
-    if (!res.ok) throw new Error((data as ApiError).detail || "API error");
-    return data as T;
+    const parsed = text ? (JSON.parse(text) as T | ApiError) : ({} as T);
+    if (!res.ok) {
+      const detail = (parsed as ApiError).detail;
+      const msg =
+        typeof detail === "string"
+          ? detail
+          : detail !== undefined
+            ? JSON.stringify(detail)
+            : "API error";
+      throw new Error(msg);
+    }
+    if (!text) return {} as T;
+    return parsed as T;
   }
 
   async function login() {
@@ -82,6 +107,70 @@ function App() {
     }
   }
 
+  async function loadBots() {
+    try {
+      const list = await api<BotItem[]>("/api/v1/bots", "GET");
+      setBots(list);
+      setOutput(JSON.stringify(list, null, 2));
+    } catch (e) {
+      setOutput(`Ошибка: ${(e as Error).message}`);
+    }
+  }
+
+  async function createBot() {
+    try {
+      await api("/api/v1/bots", "POST", { name: newBotName });
+      await loadBots();
+      setOutput("Бот создан.");
+    } catch (e) {
+      setOutput(`Ошибка: ${(e as Error).message}`);
+    }
+  }
+
+  async function connectTelegram(botId: number) {
+    const tok = tgTokenByBot[botId]?.trim();
+    if (!tok) {
+      setOutput("Укажите токен от @BotFather.");
+      return;
+    }
+    try {
+      await api(`/api/v1/bots/${botId}/telegram`, "POST", { token: tok });
+      await loadBots();
+      setOutput("Telegram подключён, webhook назначен.");
+    } catch (e) {
+      setOutput(`Ошибка: ${(e as Error).message}`);
+    }
+  }
+
+  async function disconnectTelegram(botId: number) {
+    try {
+      await api(`/api/v1/bots/${botId}/telegram`, "DELETE");
+      await loadBots();
+      setOutput("Telegram отключён.");
+    } catch (e) {
+      setOutput(`Ошибка: ${(e as Error).message}`);
+    }
+  }
+
+  async function deleteBot(botId: number) {
+    try {
+      await api(`/api/v1/bots/${botId}`, "DELETE");
+      await loadBots();
+      setOutput("Бот удалён.");
+    } catch (e) {
+      setOutput(`Ошибка: ${(e as Error).message}`);
+    }
+  }
+
+  async function loadBotMessages(botId: number) {
+    try {
+      const msgs = await api<unknown[]>(`/api/v1/bots/${botId}/messages`, "GET");
+      setOutput(JSON.stringify(msgs, null, 2));
+    } catch (e) {
+      setOutput(`Ошибка: ${(e as Error).message}`);
+    }
+  }
+
   async function inviteUser() {
     try {
       const data = await api("/api/v1/org/users/invite", "POST", {
@@ -111,6 +200,7 @@ function App() {
         <button onClick={() => setView("profile")} disabled={!isAuth}>Профиль</button>
         <button onClick={() => setView("org")} disabled={!isAuth}>Организация</button>
         <button onClick={() => setView("users")} disabled={!isAuth}>Пользователи</button>
+        <button onClick={() => setView("bots")} disabled={!isAuth}>Боты</button>
         <button onClick={logout}>Выход</button>
       </aside>
       <main className="content">
@@ -147,6 +237,53 @@ function App() {
               <label>Временный пароль</label>
               <input value={invitePassword} onChange={(e) => setInvitePassword(e.target.value)} />
               <button className="primary" onClick={inviteUser}>Пригласить</button>
+            </>
+          )}
+
+          {view === "bots" && (
+            <>
+              <p className="hint">
+                Создание и подключение токена — для ролей admin/manager. Для webhook нужен публичный{" "}
+                <code>PUBLIC_BASE_URL</code> на бэкенде (локально — ngrok).
+              </p>
+              <div className="row">
+                <label>Имя бота</label>
+                <input value={newBotName} onChange={(e) => setNewBotName(e.target.value)} />
+                <button className="primary" type="button" onClick={createBot}>Создать бота</button>
+                <button type="button" onClick={loadBots}>Обновить список</button>
+              </div>
+              <ul className="bot-list">
+                {bots.map((b) => (
+                  <li key={b.id}>
+                    <strong>{b.name}</strong> — {b.status}
+                    {b.telegram_bot_username ? ` @${b.telegram_bot_username}` : ""}
+                    <div className="muted small">Webhook: {b.webhook_url}</div>
+                    <div className="row">
+                      <input
+                        placeholder="Токен BotFather"
+                        type="password"
+                        autoComplete="off"
+                        value={tgTokenByBot[b.id] ?? ""}
+                        onChange={(e) =>
+                          setTgTokenByBot((prev) => ({ ...prev, [b.id]: e.target.value }))
+                        }
+                      />
+                      <button type="button" className="primary" onClick={() => connectTelegram(b.id)}>
+                        Подключить Telegram
+                      </button>
+                      <button type="button" onClick={() => disconnectTelegram(b.id)}>
+                        Отключить
+                      </button>
+                      <button type="button" onClick={() => loadBotMessages(b.id)}>
+                        Сообщения
+                      </button>
+                      <button type="button" onClick={() => deleteBot(b.id)}>
+                        Удалить бота
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </>
           )}
 
