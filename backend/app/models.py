@@ -95,6 +95,7 @@ class Bot(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    dialog_states = relationship("BotDialogState", back_populates="bot", cascade="all, delete-orphan")
 
 
 class BotMessage(Base):
@@ -146,3 +147,16 @@ class FlowVersion(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     flow_definition = relationship("FlowDefinition", back_populates="versions")
+
+
+class BotDialogState(Base):
+    __tablename__ = "bot_dialog_states"
+
+    id = Column(Integer, primary_key=True, index=True)
+    bot_id = Column(Integer, ForeignKey("bots.id"), nullable=False)
+    telegram_chat_id = Column(String(64), nullable=False, index=True)
+    waiting_trigger_block_id = Column(String(128), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    bot = relationship("Bot", back_populates="dialog_states")

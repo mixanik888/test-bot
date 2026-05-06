@@ -28,6 +28,7 @@ type FlowTriggerPath = {
   id: string;
   name: string;
   regex: string;
+  match_type?: "regex" | "yes" | "no" | "any";
 };
 
 type FlowBlock = {
@@ -39,7 +40,7 @@ type FlowBlock = {
   trigger_paths?: FlowTriggerPath[] | null;
   condition_regex?: string | null;
   fallback_action_value?: string | null;
-  action_type?: "return_string" | null;
+  action_type?: "return_string" | "question" | null;
   action_value?: string | null;
 };
 
@@ -220,7 +221,7 @@ function App() {
       y: 80 + flowBlocks.length * 120,
       trigger_paths:
         type === "trigger"
-          ? [{ id: `path_${Date.now()}`, name: "Путь 1", regex: ".*" }]
+          ? [{ id: `path_${Date.now()}`, name: "Путь 1", regex: ".*", match_type: "regex" }]
           : null,
       condition_regex: null,
       fallback_action_value: type === "trigger" ? "Не понял запрос, уточните, пожалуйста." : null,
@@ -249,6 +250,7 @@ function App() {
           id: `path_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`,
           name: `Путь ${(block.trigger_paths?.length ?? 0) + 1}`,
           regex: ".*",
+          match_type: "regex",
         };
         return { ...block, trigger_paths: [...(block.trigger_paths ?? []), nextPath] };
       }),
@@ -298,6 +300,19 @@ function App() {
   }
 
   function getTriggerPathRegexMatch(path: FlowTriggerPath): boolean | null {
+    const inputText = triggerTestTextByPathId[path.id] ?? "";
+    const matchType = path.match_type ?? "regex";
+    if (matchType === "yes") {
+      const normalized = inputText.trim().toLowerCase();
+      return ["да", "д", "yes", "y", "ok", "ага", "угу", "конечно", "верно"].includes(normalized);
+    }
+    if (matchType === "no") {
+      const normalized = inputText.trim().toLowerCase();
+      return ["нет", "н", "no", "n", "неа", "не", "отмена"].includes(normalized);
+    }
+    if (matchType === "any") {
+      return true;
+    }
     const rawPattern = (path.regex ?? "").trim();
     let pattern = rawPattern;
     let flags = "";
@@ -320,13 +335,13 @@ function App() {
     if (!pattern) return null;
     try {
       const matcher = new RegExp(pattern, flags);
-      return matcher.test(triggerTestTextByPathId[path.id] ?? "");
+      return matcher.test(inputText);
     } catch {
       return null;
     }
   }
 
-  function updateFlowActionType(id: string, actionType: "return_string") {
+  function updateFlowActionType(id: string, actionType: "return_string" | "question") {
     setFlowBlocks((prev) =>
       prev.map((block) => (block.id === id ? { ...block, action_type: actionType } : block)),
     );
@@ -459,6 +474,13 @@ function App() {
     if ((edge.when ?? "") === "fallback") return "fallback";
     const path = (sourceBlock.trigger_paths ?? []).find((item) => item.id === edge.when);
     return path ? `path:${path.name}` : edge.when ?? "always";
+  }
+
+  function getPathTypeShortLabel(matchType: FlowTriggerPath["match_type"]): string {
+    if (matchType === "yes") return "Y";
+    if (matchType === "no") return "N";
+    if (matchType === "any") return "A";
+    return "R";
   }
 
   const selectedFlowBlock = selectedFlowBlockId ? getFlowBlockById(selectedFlowBlockId) : undefined;
@@ -818,20 +840,39 @@ function App() {
                               onChange={(e) => updateTriggerPath(selectedFlowBlock.id, path.id, { name: e.target.value })}
                               placeholder="Имя пути"
                             />
+                            <select
+                              value={path.match_type ?? "regex"}
+                              onChange={(e) =>
+                                updateTriggerPath(selectedFlowBlock.id, path.id, {
+                                  match_type: e.target.value as "regex" | "yes" | "no" | "any",
+                                })
+                              }
+                            >
+                              <option value="regex">regex</option>
+                              <option value="yes">yes</option>
+                              <option value="no">no</option>
+                              <option value="any">any</option>
+                            </select>
                             <button type="button" onClick={() => removeTriggerPath(selectedFlowBlock.id, path.id)}>
                               Удалить путь
                             </button>
                           </div>
+                          {(path.match_type ?? "regex") === "regex" && (
+                            <div className="row">
+                              <input
+                                value={path.regex}
+                                onChange={(e) => updateTriggerPath(selectedFlowBlock.id, path.id, { regex: e.target.value })}
+                                placeholder="Regex пути"
+                              />
+                            </div>
+                          )}
                           <div className="row">
                             <input
-                              value={path.regex}
-                              onChange={(e) => updateTriggerPath(selectedFlowBlock.id, path.id, { regex: e.target.value })}
-                              placeholder="Regex пути"
-                            />
-                          </div>
-                          <div className="row">
-                            <input
-                              placeholder="Тестовая строка для regex"
+                              placeholder={
+                                (path.match_type ?? "regex") === "regex"
+                                  ? "Тестовая строка для regex"
+                                  : "Тестовая строка ответа пользователя"
+                              }
                               value={triggerTestTextByPathId[path.id] ?? ""}
                               onChange={(e) => updateTriggerTestText(path.id, e.target.value)}
                             />
@@ -840,7 +881,9 @@ function App() {
                                 ? "match=true"
                                 : getTriggerPathRegexMatch(path) === false
                                   ? "match=false"
-                                  : "invalid regex"}
+                                  : (path.match_type ?? "regex") === "regex"
+                                    ? "invalid regex"
+                                    : "no match"}
                             </span>
                           </div>
                         </div>
@@ -873,14 +916,41 @@ function App() {
                       <div className="row">
                         <select
                           value={selectedFlowBlock.action_type ?? "return_string"}
-                          onChange={(e) => updateFlowActionType(selectedFlowBlock.id, e.target.value as "return_string")}
+                          onChange={(e) =>
+                            updateFlowActionType(selectedFlowBlock.id, e.target.value as "return_string" | "question")
+                          }
                         >
                           <option value="return_string">return_string</option>
+                          <option value="question">question</option>
                         </select>
                       </div>
                       <div className="row">
+                        <button
+                          type="button"
+                          className={
+                            (selectedFlowBlock.action_type ?? "return_string") === "return_string"
+                              ? "primary"
+                              : ""
+                          }
+                          onClick={() => updateFlowActionType(selectedFlowBlock.id, "return_string")}
+                        >
+                          return_string
+                        </button>
+                        <button
+                          type="button"
+                          className={(selectedFlowBlock.action_type ?? "return_string") === "question" ? "primary" : ""}
+                          onClick={() => updateFlowActionType(selectedFlowBlock.id, "question")}
+                        >
+                          question
+                        </button>
+                      </div>
+                      <div className="row">
                         <input
-                          placeholder="Строка ответа"
+                          placeholder={
+                            (selectedFlowBlock.action_type ?? "return_string") === "question"
+                              ? "Текст вопроса пользователю"
+                              : "Строка ответа"
+                          }
                           value={selectedFlowBlock.action_value ?? ""}
                           onChange={(e) => updateFlowActionValue(selectedFlowBlock.id, e.target.value)}
                         />
@@ -990,9 +1060,12 @@ function App() {
                               event.stopPropagation();
                               startPathConnect(block.id, path.id);
                             }}
-                            title={path.regex}
+                            title={`${path.match_type ?? "regex"}: ${path.regex}`}
                           >
-                            {path.name}
+                            <span className={`flow-node-path-type flow-node-path-type-${path.match_type ?? "regex"}`}>
+                              {getPathTypeShortLabel(path.match_type)}
+                            </span>
+                            <span>{path.name}</span>
                           </button>
                         ))}
                         <button

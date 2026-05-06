@@ -238,12 +238,43 @@ pre {
 }
 
 .flow-node-path-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid #cbd5e1;
   border-radius: 999px;
   background: #fff;
   font-size: 11px;
   padding: 3px 8px;
   cursor: pointer;
+}
+
+.flow-node-path-type {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.flow-node-path-type-regex {
+  background: #2563eb;
+}
+
+.flow-node-path-type-yes {
+  background: #16a34a;
+}
+
+.flow-node-path-type-no {
+  background: #dc2626;
+}
+
+.flow-node-path-type-any {
+  background: #6b7280;
 }
 
 .flow-inspector {

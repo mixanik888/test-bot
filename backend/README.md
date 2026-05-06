@@ -65,6 +65,7 @@ export PUBLIC_BASE_URL="https://xxxx.ngrok.io"
 
 - `003_max.sql` — таблица `bot_max_integrations` для хранения токена и данных подключённого MAX-бота.
 - `004_flows.sql` — таблицы `flow_definitions` и `flow_versions` для конструктора процессов.
+- `005_dialog_states.sql` — таблица `bot_dialog_states` для ожидания ответа после action `question`.
 
 ## Ограничения текущей версии
 

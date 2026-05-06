@@ -56,7 +56,7 @@ async def telegram_webhook(
         return {"ok": True}
 
     try:
-        reply, debug_line = resolve_action_reply(db, bot, text)
+        reply, debug_line = resolve_action_reply(db, bot, text, str(chat_id))
         if not reply:
             reply = f"Echo: {text}"
             debug_line = f"{debug_line}; fallback=echo"

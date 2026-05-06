@@ -99,6 +99,7 @@ class FlowTriggerPath(BaseModel):
     id: str
     name: str
     regex: str
+    match_type: str = "regex"
 
 
 class FlowBlock(BaseModel):

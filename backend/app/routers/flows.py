@@ -108,10 +108,23 @@ def _validate_schema(blocks: list[FlowBlock], edges: list[FlowEdge]) -> list[str
                 if path.id in path_ids:
                     errors.append("ID путей trigger должны быть уникальными")
                 path_ids.add(path.id)
-                try:
-                    re.compile(path.regex)
-                except re.error:
-                    errors.append(f"Regex пути trigger '{path.name}' должен быть корректным")
+                if path.match_type not in ("regex", "yes", "no", "any"):
+                    errors.append(f"Тип пути trigger '{path.name}' должен быть regex/yes/no/any")
+                    continue
+                if path.match_type == "regex":
+                    try:
+                        re.compile(path.regex)
+                    except re.error:
+                        errors.append(f"Regex пути trigger '{path.name}' должен быть корректным")
+            yes_count = sum(1 for path in trigger_paths if path.match_type == "yes")
+            no_count = sum(1 for path in trigger_paths if path.match_type == "no")
+            any_count = sum(1 for path in trigger_paths if path.match_type == "any")
+            if yes_count > 1:
+                errors.append("У trigger может быть только один путь типа yes")
+            if no_count > 1:
+                errors.append("У trigger может быть только один путь типа no")
+            if any_count > 1:
+                errors.append("У trigger может быть только один путь типа any")
         elif trigger_block.condition_regex:
             try:
                 re.compile(trigger_block.condition_regex)
@@ -137,11 +150,21 @@ def _validate_schema(blocks: list[FlowBlock], edges: list[FlowEdge]) -> list[str
 
     action_blocks = [block for block in blocks if block.type == "action"]
     for action_block in action_blocks:
-        if action_block.action_type != "return_string":
-            errors.append("Для action поддерживается только action_type=return_string")
+        if action_block.action_type not in ("return_string", "question"):
+            errors.append("Для action поддерживаются только action_type=return_string или action_type=question")
             continue
         if not action_block.action_value or not action_block.action_value.strip():
-            errors.append("Для action типа return_string нужно заполнить action_value")
+            errors.append(f"Для action типа {action_block.action_type} нужно заполнить action_value")
+        if action_block.action_type == "question":
+            question_edges = [
+                edge for edge in edges if edge.from_block_id == action_block.id and edge.when == "always"
+            ]
+            has_trigger_target = any(
+                (blocks_by_id.get(edge.to_block_id) and blocks_by_id[edge.to_block_id].type == "trigger")
+                for edge in question_edges
+            )
+            if not has_trigger_target:
+                errors.append("Для action типа question добавьте связь when=always на блок trigger")
 
     return errors
 
