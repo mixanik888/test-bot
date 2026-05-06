@@ -18,6 +18,18 @@ uvicorn app.main:app --reload --port 8000
 export PUBLIC_BASE_URL="https://xxxx.ngrok.io"
 ```
 
+## MAX (этап 3)
+
+Для подключения MAX также нужен публичный HTTPS URL API:
+
+```bash
+export PUBLIC_BASE_URL="https://xxxx.ngrok.io"
+```
+
+Подключение MAX выполняется токеном из платформы MAX (раздел "Интеграция -> Получить токен").
+Сервер выполняет `GET /me`, затем создаёт webhook-подписку `POST /subscriptions` на URL
+`/api/v1/webhooks/max/{webhook_secret}`.
+
 ## Основные endpoint'ы
 
 - `POST /api/v1/auth/register`
@@ -39,8 +51,20 @@ export PUBLIC_BASE_URL="https://xxxx.ngrok.io"
 - `DELETE /api/v1/bots/{id}`
 - `POST /api/v1/bots/{id}/telegram` — тело `{ "token": "<BotFather>" }`, выставляет webhook
 - `DELETE /api/v1/bots/{id}/telegram` — отключить Telegram
+- `POST /api/v1/bots/{id}/max` — тело `{ "token": "<MAX access token>" }`, подписывает webhook через MAX API
+- `DELETE /api/v1/bots/{id}/max` — отключить MAX
 - `GET /api/v1/bots/{id}/messages` — последние сообщения (лог)
 - `POST /api/v1/webhooks/telegram/{webhook_secret}` — вызывается Telegram (не для браузера)
+- `POST /api/v1/webhooks/max/{webhook_secret}` — вызывается MAX (не для браузера)
+- `GET /api/v1/bots/{id}/flow` — получить черновик схемы процесса
+- `PUT /api/v1/bots/{id}/flow` — сохранить черновик схемы (только `trigger` и `action`)
+- `POST /api/v1/bots/{id}/flow/publish` — создать новую версию процесса
+- `GET /api/v1/bots/{id}/flow/versions` — список версий процесса
+
+### Миграции
+
+- `003_max.sql` — таблица `bot_max_integrations` для хранения токена и данных подключённого MAX-бота.
+- `004_flows.sql` — таблицы `flow_definitions` и `flow_versions` для конструктора процессов.
 
 ## Ограничения текущей версии
 

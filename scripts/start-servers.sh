@@ -32,12 +32,14 @@ usage() {
 
   --backend-only   Только API (uvicorn)
   --frontend-only  Только Vite
+  --with-nginx     Перед запуском поднять/проверить nginx (systemd)
   -h, --help       Справка
 
 Переменные окружения:
   BACKEND_PORT   Порт API (по умолчанию: 8000)
   BACKEND_HOST   Хост uvicorn (по умолчанию: 0.0.0.0)
   NODE_BIN       Полный путь к node 18+ (если в PATH старая версия)
+  NGINX_SERVICE  Имя systemd-сервиса nginx (по умолчанию: nginx)
 EOF
 }
 
@@ -69,6 +71,8 @@ require_node_min() {
 
 BACKEND_ONLY=false
 FRONTEND_ONLY=false
+WITH_NGINX=false
+NGINX_SERVICE="${NGINX_SERVICE:-nginx}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -78,6 +82,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --frontend-only)
       FRONTEND_ONLY=true
+      shift
+      ;;
+    --with-nginx)
+      WITH_NGINX=true
       shift
       ;;
     -h|--help)
@@ -137,12 +145,48 @@ start_frontend() {
   exec npm run dev
 }
 
+ensure_nginx_running() {
+  if ! command -v systemctl >/dev/null 2>&1; then
+    echo "Опция --with-nginx требует systemd/systemctl." >&2
+    exit 1
+  fi
+
+  if systemctl is-active --quiet "$NGINX_SERVICE"; then
+    echo "nginx уже запущен ($NGINX_SERVICE)."
+    return 0
+  fi
+
+  echo "Запускаю nginx ($NGINX_SERVICE)..."
+  if [[ "$EUID" -eq 0 ]]; then
+    systemctl start "$NGINX_SERVICE"
+  elif command -v sudo >/dev/null 2>&1; then
+    if sudo -n systemctl start "$NGINX_SERVICE" 2>/dev/null; then
+      true
+    else
+      echo "Нужны права для запуска nginx. Выполните: sudo systemctl start $NGINX_SERVICE" >&2
+      exit 1
+    fi
+  else
+    echo "sudo не найден. Запустите nginx вручную: systemctl start $NGINX_SERVICE" >&2
+    exit 1
+  fi
+
+  if ! systemctl is-active --quiet "$NGINX_SERVICE"; then
+    echo "Не удалось запустить nginx ($NGINX_SERVICE)." >&2
+    exit 1
+  fi
+}
+
 if [[ "$FRONTEND_ONLY" == true ]]; then
   start_frontend
 fi
 
 if [[ "$BACKEND_ONLY" == true ]]; then
   start_backend
+fi
+
+if [[ "$WITH_NGINX" == true ]]; then
+  ensure_nginx_running
 fi
 
 (

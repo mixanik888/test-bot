@@ -6,6 +6,8 @@
 
 - **Backend:** JWT-авторизация, роли (`admin`, `manager`, `support_agent`), приглашение пользователей, заглушки OAuth (Google / Telegram), лимиты и план в биллинге.
 - **Telegram (этап 2):** создание бота в организации, подключение токена BotFather, вебхук, приём текстовых сообщений и echo-ответ с учётом лимита сообщений по тарифу.
+- **MAX (этап 3):** дополнительный канал для бота: подключение токена MAX, подписка на Webhook, приём событий и echo-ответ через MAX API.
+- **Flow editor (этап 3):** упрощённый визуальный редактор процесса (`trigger` + `action`), сохранение схемы, валидация и версионирование.
 - **Frontend:** экраны входа, профиля, организации, приглашений, **боты**; API по умолчанию на том же хосте, порт `8000`.
 
 ## Стек
@@ -42,6 +44,19 @@ npm run dev
 ```
 
 Подробности: [backend/README.md](backend/README.md), [frontend-react/README.md](frontend-react/README.md).
+
+## Что добавлено в этапе 3 (MAX)
+
+- Backend:
+  - новый API-клиент `backend/app/max_api.py` (`/me`, `/subscriptions`, `/messages`);
+  - новая таблица интеграции `bot_max_integrations` (миграция `backend/migrations/003_max.sql`);
+  - новые endpoint'ы подключения MAX:
+    - `POST /api/v1/bots/{id}/max`
+    - `DELETE /api/v1/bots/{id}/max`
+  - новый webhook: `POST /api/v1/webhooks/max/{webhook_secret}`;
+  - расширен `BotResponse` полями `max_bot_username` и `has_max`.
+- Frontend:
+  - в разделе ботов добавлены поля и кнопки для подключения/отключения MAX токена.
 
 ## Структура репозитория
 

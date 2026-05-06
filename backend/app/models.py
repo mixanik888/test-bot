@@ -83,6 +83,18 @@ class Bot(Base):
 
     organization = relationship("Organization", back_populates="bots")
     messages = relationship("BotMessage", back_populates="bot", cascade="all, delete-orphan")
+    max_integration = relationship(
+        "BotMaxIntegration",
+        back_populates="bot",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    flow_definition = relationship(
+        "FlowDefinition",
+        back_populates="bot",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 class BotMessage(Base):
@@ -96,3 +108,41 @@ class BotMessage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     bot = relationship("Bot", back_populates="messages")
+
+
+class BotMaxIntegration(Base):
+    __tablename__ = "bot_max_integrations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    bot_id = Column(Integer, ForeignKey("bots.id"), nullable=False, unique=True)
+    access_token = Column(String(255), nullable=False)
+    bot_user_id = Column(Integer, nullable=True)
+    bot_username = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    bot = relationship("Bot", back_populates="max_integration")
+
+
+class FlowDefinition(Base):
+    __tablename__ = "flow_definitions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    bot_id = Column(Integer, ForeignKey("bots.id"), nullable=False, unique=True)
+    draft_schema = Column(String, nullable=False, default="[]")
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    bot = relationship("Bot", back_populates="flow_definition")
+    versions = relationship("FlowVersion", back_populates="flow_definition", cascade="all, delete-orphan")
+
+
+class FlowVersion(Base):
+    __tablename__ = "flow_versions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    flow_definition_id = Column(Integer, ForeignKey("flow_definitions.id"), nullable=False)
+    version = Column(Integer, nullable=False)
+    schema = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    flow_definition = relationship("FlowDefinition", back_populates="versions")

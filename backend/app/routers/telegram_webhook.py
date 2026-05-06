@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from ..db import get_db
+from ..flow_runtime import resolve_action_reply
 from ..models import Bot, BotMessage, Plan, Subscription, UsageCounter
 from ..telegram_api import telegram_send_message
 
@@ -55,7 +56,20 @@ async def telegram_webhook(
         return {"ok": True}
 
     try:
-        reply = f"Echo: {text}"
+        reply, debug_line = resolve_action_reply(db, bot, text)
+        if not reply:
+            reply = f"Echo: {text}"
+            debug_line = f"{debug_line}; fallback=echo"
+
+        db.add(
+            BotMessage(
+                bot_id=bot.id,
+                direction="debug",
+                telegram_chat_id=str(chat_id),
+                text=debug_line,
+            )
+        )
+        db.commit()
         telegram_send_message(bot.telegram_bot_token, int(chat_id), reply)
         db.add(
             BotMessage(
